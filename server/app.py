@@ -1,12 +1,13 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit
 import eventlet
+import os
 
 # Patch standard library for eventlet
 eventlet.monkey_patch()
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key-here'
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key-here')
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
 # Store connected clients
@@ -42,11 +43,12 @@ def handle_pi_update(data):
         'pi_id': 'pi_001'
     }
     """
-    print(f"Received update from Pi: {data.get('pi_id', 'unknown')}")
+    # print(f"Received update from Pi: {data.get('pi_id', 'unknown')}")
     
     # Broadcast to all connected browser clients
     emit('browser_feed', data, broadcast=True)
 
 if __name__ == '__main__':
-    print("Starting Flask-SocketIO server on port 5000...")
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    print(f"Starting Flask-SocketIO server on port {port}...")
+    socketio.run(app, host='0.0.0.0', port=port, debug=False)
