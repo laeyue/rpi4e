@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Raspberry Pi Detection Hub</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .feed-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 20px;
+        }
+
+        .feed-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .feed-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .pi-id {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 18px;
+        }
+
+        .status {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .status.connected {
+            background: #10b981;
+            color: white;
+        }
+
+        .status.disconnected {
+            background: #ef4444;
+            color: white;
+        }
+
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        #videoCanvas {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 15px;
+            padding: 10px;
+            background: #f3f4f6;
+            border-radius: 8px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #1f2937;
+        }
+
+        .no-feed {
+            text-align: center;
+            color: #6b7280;
+            padding: 40px;
+            background: #f3f4f6;
+            border-radius: 8px;
+        }
+
+        .timestamp {
+            font-size: 12px;
+            color: #9ca3af;
+            text-align: right;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Raspberry Pi Object Detection Hub</h1>
+        
+        <div class="feed-grid">
+            <div class="feed-card">
+                <div class="feed-header">
+                    <div class="pi-id" id="piId">Waiting for feed...</div>
+                    <div class="status disconnected" id="status">Disconnected</div>
+                </div>
+                
+                <div class="canvas-container">
+                    <canvas id="videoCanvas" width="640" height="480"></canvas>
+                </div>
+                
+                <div class="stats">
+                    <div class="stat-item">
+                        <div class="stat-label">Detections</div>
+                        <div class="stat-value" id="detectionCount">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">FPS</div>
+                        <div class="stat-value" id="fps">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Latency</div>
+                        <div class="stat-value" id="latency">0ms</div>
+                    </div>
+                </div>
+                
+                <div class="timestamp" id="timestamp">No data received</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        const canvas = document.getElementById('videoCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let frameCount = 0;
+        let lastFrameTime = Date.now();
+        let currentFPS = 0;
+
+        // Connection status
+        socket.on('connect', () => {
+            console.log('Connected to server');
+            document.getElementById('status').textContent = 'Connected';
+            document.getElementById('status').className = 'status connected';
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Disconnected from server');
+            document.getElementById('status').textContent = 'Disconnected';
+            document.getElementById('status').className = 'status disconnected';
+        });
+
+        // Handle incoming video feed with detections
+        socket.on('browser_feed', (data) => {
+            console.log('Received frame from Pi:', data.pi_id);
+            
+            // Update Pi ID
+            document.getElementById('piId').textContent = data.pi_id || 'Unknown Pi';
+            
+            // Calculate FPS
+            frameCount++;
+            const now = Date.now();
+            if (now - lastFrameTime >= 1000) {
+                currentFPS = frameCount;
+                frameCount = 0;
+                lastFrameTime = now;
+                document.getElementById('fps').textContent = currentFPS;
+            }
+            
+            // Calculate latency
+            if (data.timestamp) {
+                const sentTime = new Date(data.timestamp).getTime();
+                const latency = now - sentTime;
+                document.getElementById('latency').textContent = `${latency}ms`;
+            }
+            
+            // Update detection count
+            const detectionCount = data.detections ? data.detections.length : 0;
+            document.getElementById('detectionCount').textContent = detectionCount;
+            
+            // Update timestamp
+            document.getElementById('timestamp').textContent = `Last update: ${new Date().toLocaleTimeString()}`;
+            
+            // Draw image
+            const img = new Image();
+            img.onload = () => {
+                // Set canvas size to match image
+                canvas.width = img.width;
+                canvas.height = img.height;
+                
+                // Draw the image
+                ctx.drawImage(img, 0, 0);
+                
+                // Draw bounding boxes
+                if (data.detections && data.detections.length > 0) {
+                    data.detections.forEach(detection => {
+                        drawBoundingBox(detection);
+                    });
+                }
+            };
+            img.src = 'data:image/jpeg;base64,' + data.image;
+        });
+
+        function drawBoundingBox(detection) {
+            const { label, x, y, width, height, confidence } = detection;
+            
+            // Draw rectangle
+            ctx.strokeStyle = '#00ff00';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(x, y, width, height);
+            
+            // Draw label background
+            const labelText = `${label} ${(confidence * 100).toFixed(1)}%`;
+            ctx.font = 'bold 16px Arial';
+            const textWidth = ctx.measureText(labelText).width;
+            
+            ctx.fillStyle = '#00ff00';
+            ctx.fillRect(x, y - 25, textWidth + 10, 25);
+            
+            // Draw label text
+            ctx.fillStyle = '#000000';
+            ctx.fillText(labelText, x + 5, y - 7);
+        }
+
+        // Draw initial placeholder
+        ctx.fillStyle = '#1f2937';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#9ca3af';
+        ctx.font = '24px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Waiting for video feed...', canvas.width / 2, canvas.height / 2);
+    </script>
+</body>
+</html>
