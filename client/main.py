@@ -18,14 +18,31 @@ FPS_TARGET = 10  # Target frames per second to send
 
 # Model Configuration (OpenCV DNN - MobileNet SSD)
 MODEL_DIR = "models"
-PROTO_URL = "https://github.com/chuanqi305/MobileNet-SSD/raw/master/MobileNetSSD_deploy.prototxt"
-MODEL_URL = "https://github.com/chuanqi305/MobileNet-SSD/raw/master/MobileNetSSD_deploy.caffemodel"
+PROTO_URL = "https://raw.githubusercontent.com/djmv/MobilNet_SSD_opencv/master/MobileNetSSD_deploy.prototxt"
+MODEL_URL = "https://github.com/djmv/MobilNet_SSD_opencv/raw/master/MobileNetSSD_deploy.caffemodel"
 PROTO_FILENAME = "MobileNetSSD_deploy.prototxt"
 MODEL_FILENAME = "MobileNetSSD_deploy.caffemodel"
 CONFIDENCE_THRESHOLD = 0.5
 
 # Initialize SocketIO client
 sio = socketio.Client()
+
+# Global control flag
+is_running = True
+
+@sio.event
+def command_received(data):
+    """Handle control commands from server"""
+    global is_running
+    command = data.get('command')
+    print(f"📥 Received command: {command}")
+    
+    if command == 'start':
+        is_running = True
+        print("▶️ Resuming stream")
+    elif command == 'stop':
+        is_running = False
+        print("⏸️ Pausing stream")
 
 def download_model():
     """Download the Caffe model if not present"""
@@ -124,6 +141,7 @@ def connect():
     """Handle successful connection to server"""
     print(f"✅ Connected to server: {SERVER_URL}")
     print(f"🆔 Pi ID: {PI_ID}")
+    sio.emit('register_pi', {'pi_id': PI_ID})
 
 
 @sio.event
@@ -162,14 +180,18 @@ def main():
     net = load_model()
     
     # Connect to server
-    try:
-        print(f"🔌 Connecting to server: {SERVER_URL}")
-        sio.connect(SERVER_URL)
-    except Exception as e:
-        print(f"❌ Failed to connect to server: {e}")
-        print("💡 Make sure the server is running")
-        cap.release()
-        return
+    print(f"🔌 Connecting to server: {SERVER_URL}")
+    while not sio.connected:
+        try:
+            sio.connect(SERVER_URL, wait_timeout=10)
+        except Exception as e:
+            print(f"❌ Connection failed: {e}")
+            print("⏳ Retrying in 5 seconds... (Press Ctrl+C to stop)")
+            try:
+                time.sleep(5)
+            except KeyboardInterrupt:
+                cap.release()
+                return
     
     # Frame timing
     frame_interval = 1.0 / FPS_TARGET
@@ -181,6 +203,11 @@ def main():
     
     try:
         while True:
+            # Check if running
+            if not is_running:
+                time.sleep(1)
+                continue
+
             # Read frame from camera
             ret, frame = cap.read()
             

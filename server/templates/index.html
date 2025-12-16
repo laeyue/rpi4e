@@ -51,6 +51,33 @@
             margin-bottom: 15px;
         }
 
+        .controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 5px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            color: white;
+            transition: opacity 0.2s;
+        }
+
+        .btn:hover {
+            opacity: 0.8;
+        }
+
+        .btn-start {
+            background-color: #10b981;
+        }
+
+        .btn-stop {
+            background-color: #ef4444;
+        }
+
         .pi-id {
             font-weight: bold;
             color: #667eea;
@@ -137,6 +164,10 @@
             <div class="feed-card">
                 <div class="feed-header">
                     <div class="pi-id" id="piId">Waiting for feed...</div>
+                    <div class="controls">
+                        <button class="btn btn-start" onclick="controlPi('start')">Start</button>
+                        <button class="btn btn-stop" onclick="controlPi('stop')">Stop</button>
+                    </div>
                     <div class="status disconnected" id="status">Disconnected</div>
                 </div>
                 
@@ -265,6 +296,17 @@
         ctx.font = '24px Arial';
         ctx.textAlign = 'center';
         ctx.fillText('Waiting for video feed...', canvas.width / 2, canvas.height / 2);
+
+        // Control function
+        function controlPi(command) {
+            const piId = document.getElementById('piId').textContent;
+            if (piId && piId !== 'Waiting for feed...') {
+                console.log(`Sending ${command} to ${piId}`);
+                socket.emit('control_pi', { pi_id: piId, command: command });
+            } else {
+                alert('No Pi connected yet!');
+            }
+        }
     </script>
 </body>
 </html>
