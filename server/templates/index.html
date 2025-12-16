@@ -217,6 +217,16 @@
             document.getElementById('status').className = 'status disconnected';
         });
 
+        // Handle Pi status updates (Bridge connected)
+        socket.on('pi_status', (data) => {
+            if (data.status === 'online') {
+                console.log('Pi Bridge connected:', data.pi_id);
+                document.getElementById('piId').textContent = data.pi_id;
+                document.getElementById('status').textContent = 'Bridge Ready';
+                document.getElementById('status').className = 'status connected';
+            }
+        });
+
         // Handle incoming video feed with detections
         socket.on('browser_feed', (data) => {
             console.log('Received frame from Pi:', data.pi_id);

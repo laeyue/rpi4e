@@ -35,6 +35,8 @@ def handle_register_pi(data):
     if pi_id:
         join_room(pi_id)
         print(f"Registered Pi: {pi_id}")
+        # Notify browsers that a Pi is online/ready for control
+        emit('pi_status', {'pi_id': pi_id, 'status': 'online'}, broadcast=True)
 
 @socketio.on('control_pi')
 def handle_control_pi(data):
