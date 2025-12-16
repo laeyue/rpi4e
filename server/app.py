@@ -10,8 +10,10 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key-here')
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
-# Store connected clients
+# Store connected clients and Pis
 connected_clients = []
+connected_pis = set()
+socket_to_pi = {}
 
 @app.route('/')
 def index():
@@ -22,11 +24,21 @@ def index():
 def handle_connect():
     """Handle client connection"""
     print(f'Client connected: {request.sid}')
+    # Send status of all currently connected Pis to the new client
+    for pi_id in connected_pis:
+        emit('pi_status', {'pi_id': pi_id, 'status': 'online'})
 
 @socketio.on('disconnect')
 def handle_disconnect():
     """Handle client disconnection"""
     print(f'Client disconnected: {request.sid}')
+    # Clean up if it was a Pi
+    if request.sid in socket_to_pi:
+        pi_id = socket_to_pi[request.sid]
+        connected_pis.discard(pi_id)
+        del socket_to_pi[request.sid]
+        print(f"Pi disconnected: {pi_id}")
+        emit('pi_status', {'pi_id': pi_id, 'status': 'offline'}, broadcast=True)
 
 @socketio.on('register_pi')
 def handle_register_pi(data):
@@ -34,6 +46,10 @@ def handle_register_pi(data):
     pi_id = data.get('pi_id')
     if pi_id:
         join_room(pi_id)
+        # Track this Pi
+        socket_to_pi[request.sid] = pi_id
+        connected_pis.add(pi_id)
+        
         print(f"Registered Pi: {pi_id}")
         # Notify browsers that a Pi is online/ready for control
         emit('pi_status', {'pi_id': pi_id, 'status': 'online'}, broadcast=True)

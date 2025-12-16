@@ -224,6 +224,10 @@
                 document.getElementById('piId').textContent = data.pi_id;
                 document.getElementById('status').textContent = 'Bridge Ready';
                 document.getElementById('status').className = 'status connected';
+            } else if (data.status === 'offline') {
+                console.log('Pi Bridge disconnected:', data.pi_id);
+                document.getElementById('status').textContent = 'Bridge Offline';
+                document.getElementById('status').className = 'status disconnected';
             }
         });
 

@@ -7,7 +7,7 @@ import sys
 
 # Configuration
 SERVER_URL = "https://edge.studentio.xyz"
-PI_ID = "pi_001"
+PI_ID = "pi1"
 
 # Initialize SocketIO client
 sio = socketio.Client()
