@@ -5,43 +5,60 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Raspberry Pi Detection Hub</title>
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --success: #10b981;
+            --danger: #ef4444;
+            --bg-gradient: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+        }
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Poppins', sans-serif;
+            background: var(--bg-gradient);
             min-height: 100vh;
-            padding: 20px;
+            padding: 15px;
+            color: var(--text-main);
         }
 
         .container {
-            max-width: 1400px;
+            max-width: 1200px;
             margin: 0 auto;
         }
 
         h1 {
             color: white;
             text-align: center;
-            margin-bottom: 30px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            margin-bottom: 25px;
+            font-size: 1.8rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
 
         .feed-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 20px;
         }
 
         .feed-card {
-            background: white;
-            border-radius: 12px;
+            background: var(--card-bg);
+            border-radius: 16px;
             padding: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            transition: transform 0.2s ease;
         }
 
         .feed-header {
@@ -49,110 +66,124 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 15px;
-        }
-
-        .controls {
-            display: flex;
+            flex-wrap: wrap;
             gap: 10px;
         }
 
-        .btn {
-            padding: 5px 15px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            color: white;
-            transition: opacity 0.2s;
-        }
-
-        .btn:hover {
-            opacity: 0.8;
-        }
-
-        .btn-start {
-            background-color: #10b981;
-        }
-
-        .btn-stop {
-            background-color: #ef4444;
+        .header-top {
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
         .pi-id {
-            font-weight: bold;
-            color: #667eea;
-            font-size: 18px;
+            font-weight: 600;
+            color: var(--secondary);
+            font-size: 1.1rem;
         }
 
         .status {
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: bold;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
 
-        .status.connected {
-            background: #10b981;
-            color: white;
+        .status.connected { background: #d1fae5; color: #065f46; }
+        .status.disconnected { background: #fee2e2; color: #991b1b; }
+
+        .controls {
+            display: flex;
+            gap: 8px;
         }
 
-        .status.disconnected {
-            background: #ef4444;
+        .btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-family: inherit;
             color: white;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
+
+        .btn:active { transform: scale(0.95); }
+        .btn-start { background-color: var(--success); }
+        .btn-start:hover { background-color: #059669; }
+        .btn-stop { background-color: var(--danger); }
+        .btn-stop:hover { background-color: #dc2626; }
 
         .canvas-container {
             position: relative;
             width: 100%;
             background: #000;
-            border-radius: 8px;
+            border-radius: 12px;
             overflow: hidden;
+            aspect-ratio: 4/3;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
         }
 
         #videoCanvas {
             width: 100%;
-            height: auto;
+            height: 100%;
+            object-fit: contain;
             display: block;
         }
 
         .stats {
-            display: flex;
-            justify-content: space-around;
-            margin-top: 15px;
-            padding: 10px;
-            background: #f3f4f6;
-            border-radius: 8px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
         }
 
         .stat-item {
-            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
         .stat-label {
-            font-size: 12px;
-            color: #6b7280;
-            margin-bottom: 5px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 4px;
         }
 
         .stat-value {
-            font-size: 20px;
-            font-weight: bold;
-            color: #1f2937;
-        }
-
-        .no-feed {
-            text-align: center;
-            color: #6b7280;
-            padding: 40px;
-            background: #f3f4f6;
-            border-radius: 8px;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-main);
         }
 
         .timestamp {
-            font-size: 12px;
-            color: #9ca3af;
-            text-align: right;
-            margin-top: 10px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        /* Mobile Optimizations */
+        @media (max-width: 640px) {
+            body { padding: 10px; }
+            h1 { font-size: 1.5rem; margin-bottom: 20px; }
+            .feed-card { padding: 15px; }
+            .feed-header { flex-direction: column; align-items: stretch; text-align: center; }
+            .header-top { justify-content: center; margin-bottom: 10px; }
+            .controls { justify-content: center; }
+            .btn { flex: 1; padding: 12px; }
+            .stats { gap: 5px; padding: 10px; }
+            .stat-value { font-size: 1rem; }
         }
     </style>
 </head>
@@ -163,12 +194,14 @@
         <div class="feed-grid">
             <div class="feed-card">
                 <div class="feed-header">
-                    <div class="pi-id" id="piId">Waiting for feed...</div>
-                    <div class="controls">
-                        <button class="btn btn-start" onclick="controlPi('start')">Start</button>
-                        <button class="btn btn-stop" onclick="controlPi('stop')">Stop</button>
+                    <div class="header-top">
+                        <div class="pi-id" id="piId">Waiting for feed...</div>
+                        <div class="status disconnected" id="status">Disconnected</div>
                     </div>
-                    <div class="status disconnected" id="status">Disconnected</div>
+                    <div class="controls">
+                        <button class="btn btn-start" onclick="controlPi('start')">Start Stream</button>
+                        <button class="btn btn-stop" onclick="controlPi('stop')">Stop Stream</button>
+                    </div>
                 </div>
                 
                 <div class="canvas-container">
