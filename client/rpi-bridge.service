@@ -1,0 +1,14 @@
+[Unit]
+Description=Raspberry Pi Object Detection Bridge
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/rpimode/client
+ExecStart=/home/pi/rpimode/client/venv/bin/python bridge.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

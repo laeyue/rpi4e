@@ -1,0 +1,97 @@
+import socketio
+import time
+import subprocess
+import os
+import signal
+import sys
+
+# Configuration
+SERVER_URL = "https://edge.studentio.xyz"
+PI_ID = "pi_001"
+
+# Initialize SocketIO client
+sio = socketio.Client()
+
+# Store the process ID of the main script
+main_process = None
+
+def start_main_script():
+    """Start the main object detection script"""
+    global main_process
+    if main_process is None:
+        print("🚀 Starting main detection script...")
+        # Run main.py as a subprocess
+        # Using sys.executable ensures we use the same python interpreter (venv)
+        main_process = subprocess.Popen([sys.executable, "main.py"])
+        print(f"✅ Main script started with PID: {main_process.pid}")
+    else:
+        print("⚠️ Main script is already running")
+
+def stop_main_script():
+    """Stop the main object detection script"""
+    global main_process
+    if main_process:
+        print("🛑 Stopping main detection script...")
+        # Send SIGTERM to the subprocess
+        main_process.terminate()
+        try:
+            main_process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            main_process.kill()
+        
+        main_process = None
+        print("✅ Main script stopped")
+    else:
+        print("⚠️ Main script is not running")
+
+@sio.event
+def connect():
+    """Handle connection to server"""
+    print(f"✅ Bridge connected to server: {SERVER_URL}")
+    # Register as the controller for this Pi
+    sio.emit('register_pi', {'pi_id': PI_ID})
+
+@sio.event
+def disconnect():
+    print("❌ Bridge disconnected from server")
+
+@sio.event
+def command_received(data):
+    """Handle control commands"""
+    command = data.get('command')
+    print(f"📥 Bridge received command: {command}")
+    
+    if command == 'start':
+        start_main_script()
+    elif command == 'stop':
+        stop_main_script()
+    elif command == 'restart':
+        stop_main_script()
+        time.sleep(2)
+        start_main_script()
+
+def main():
+    print("🌉 Starting Bridge Service...")
+    print(f"🆔 Managing Pi ID: {PI_ID}")
+    
+    # Connect to server with retry logic
+    while True:
+        try:
+            if not sio.connected:
+                sio.connect(SERVER_URL, wait_timeout=10)
+                print("✅ Connected and waiting for commands...")
+            sio.wait()
+        except Exception as e:
+            print(f"❌ Connection failed: {e}")
+            print("⏳ Retrying in 10 seconds...")
+            time.sleep(10)
+
+if __name__ == "__main__":
+    # Handle Ctrl+C gracefully
+    def signal_handler(sig, frame):
+        print("\nExiting bridge service...")
+        stop_main_script()
+        sys.exit(0)
+    
+    signal.signal(signal.SIGINT, signal_handler)
+    main()

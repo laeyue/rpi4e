@@ -28,6 +28,8 @@ CONFIDENCE_THRESHOLD = 0.5
 sio = socketio.Client()
 
 # Global control flag
+# Note: When running via bridge.py, this script is started/stopped as a process
+# so we don't strictly need internal start/stop logic, but we keep it for direct usage.
 is_running = True
 
 @sio.event
@@ -35,14 +37,14 @@ def command_received(data):
     """Handle control commands from server"""
     global is_running
     command = data.get('command')
+    # Only handle commands if running standalone. 
+    # If running via bridge, the bridge handles the process lifecycle.
     print(f"📥 Received command: {command}")
     
     if command == 'start':
         is_running = True
-        print("▶️ Resuming stream")
     elif command == 'stop':
         is_running = False
-        print("⏸️ Pausing stream")
 
 def download_model():
     """Download the Caffe model if not present"""
