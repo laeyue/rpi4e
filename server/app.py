@@ -35,10 +35,21 @@ def handle_disconnect():
     # Clean up if it was a Pi
     if request.sid in socket_to_pi:
         pi_id = socket_to_pi[request.sid]
-        connected_pis.discard(pi_id)
         del socket_to_pi[request.sid]
-        print(f"Pi disconnected: {pi_id}")
-        emit('pi_status', {'pi_id': pi_id, 'status': 'offline'}, broadcast=True)
+        
+        # Check if any other socket is still connected for this Pi ID
+        is_still_connected = False
+        for sid, pid in socket_to_pi.items():
+            if pid == pi_id:
+                is_still_connected = True
+                break
+        
+        if not is_still_connected:
+            connected_pis.discard(pi_id)
+            print(f"Pi disconnected: {pi_id}")
+            emit('pi_status', {'pi_id': pi_id, 'status': 'offline'}, broadcast=True)
+        else:
+            print(f"Pi {pi_id} still has active connections (e.g. bridge)")
 
 @socketio.on('register_pi')
 def handle_register_pi(data):

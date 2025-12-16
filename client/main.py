@@ -10,11 +10,12 @@ import numpy as np
 
 # Configuration
 SERVER_URL = "https://edge.studentio.xyz"  # Change to your server IP/domain
-PI_ID = "pi_001"  # Unique identifier for this Raspberry Pi
+PI_ID = "pi1"  # Unique identifier for this Raspberry Pi
 CAMERA_INDEX = 0  # USB Camera index (usually 0 for first camera)
-FRAME_WIDTH = 640
-FRAME_HEIGHT = 480
-FPS_TARGET = 10  # Target frames per second to send
+FRAME_WIDTH = 320
+FRAME_HEIGHT = 240
+FPS_TARGET = 15  # Target frames per second to send
+JPEG_QUALITY = 60 # Lower quality for faster streaming
 
 # Model Configuration (OpenCV DNN - MobileNet SSD)
 MODEL_DIR = "models"
@@ -226,11 +227,16 @@ def main():
             last_frame_time = current_time
             frame_count += 1
             
-            # Run object detection
-            detections = inference(net, frame)
+            # Run object detection (every 3rd frame to reduce CPU load)
+            if frame_count % 3 == 0:
+                detections = inference(net, frame)
+                last_detections = detections
+            else:
+                # Use previous detections for smoother video
+                detections = last_detections if 'last_detections' in locals() else []
             
             # Compress frame to JPEG/Base64
-            base64_image = compress_frame(frame)
+            base64_image = compress_frame(frame, quality=JPEG_QUALITY)
             
             # Prepare data packet
             data = {
