@@ -17,11 +17,11 @@ FRAME_HEIGHT = 240
 FPS_TARGET = 15  # Target frames per second to send
 JPEG_QUALITY = 60  # Lower quality for faster streaming
 
-# Backpack Detection Configuration (YOLOv8)
+# Object Detection Configuration (YOLOv8 - water bottles)
 MODEL_DIR = "models"
 YOLO_WEIGHTS = os.path.join(MODEL_DIR, "yolov8n.pt")
 CONFIDENCE_THRESHOLD = 0.5
-TARGET_CLASS_NAME = "backpack"
+TARGET_CLASS_NAME = "bottle"
 
 # Initialize SocketIO client
 sio = socketio.Client()
@@ -55,14 +55,14 @@ def ensure_model_dir():
 
 def load_model():
     """
-    Load YOLOv8 model for backpack detection.
+    Load YOLOv8 model for water bottle detection.
 
     The ultralytics package will automatically download `yolov8n.pt`
     the first time it is used if it is not already present.
     """
     ensure_model_dir()
     try:
-        print("🧠 Loading YOLOv8 model for backpack detection...")
+        print("🧠 Loading YOLOv8 model for water bottle detection...")
         # If YOLO_WEIGHTS exists, load from local path, otherwise let ultralytics handle it
         if os.path.exists(YOLO_WEIGHTS):
             model = YOLO(YOLO_WEIGHTS)
@@ -78,11 +78,11 @@ def load_model():
 
 def inference(model, frame):
     """
-    Run YOLOv8 inference on the frame and detect backpacks.
+    Run YOLOv8 inference on the frame and detect water bottles.
 
     Returns a list of detections in the same structure the server/web UI expects:
     [
-        {'label': 'backpack', 'x': int, 'y': int, 'width': int, 'height': int, 'confidence': float},
+        {'label': 'bottle', 'x': int, 'y': int, 'width': int, 'height': int, 'confidence': float},
         ...
     ]
     """
@@ -276,7 +276,7 @@ def main():
                 # Print status every 30 frames
                 if frame_count % 30 == 0:
                     print(
-                        f"📤 Sent frame {frame_count} with {len(detections)} backpack detections"
+                        f"📤 Sent frame {frame_count} with {len(detections)} water bottle detections"
                     )
             except Exception as e:
                 print(f"⚠️ Failed to send frame: {e}")

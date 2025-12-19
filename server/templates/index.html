@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Backpack Detection Console</title>
+    <title>Water Bottle Detection Console</title>
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -765,12 +765,12 @@
                         <div class="logo-icon"></div>
                     </div>
                     <div class="app-title">
-                        Backpack Detection Console
+                        Water Bottle Detection Console
                         <span class="pill-badge">Raspberry Pi Edge</span>
                     </div>
                 </div>
                 <div class="subtitle">
-                    Live backpack detection from Pi cameras with low-latency streaming.
+                    Live water bottle detection from Pi cameras with low-latency streaming.
                 </div>
             </div>
             <div class="header-right">
@@ -809,7 +809,7 @@
                                 </div>
                                 <div class="video-indicator">
                                     <div class="video-indicator-dot"></div>
-                                    <span>Backpack detector</span>
+                                    <span>Water bottle detector</span>
                                 </div>
                             </div>
                             <canvas id="videoCanvas" width="640" height="480"></canvas>
@@ -818,7 +818,7 @@
 
                     <div class="stat-grid">
                         <div class="stat-card">
-                            <div class="stat-label">Backpacks in Frame</div>
+                            <div class="stat-label">Bottles in Frame</div>
                             <div class="stat-value" id="detectionCount">0</div>
                             <div class="stat-caption">Current frame only</div>
                         </div>
@@ -855,7 +855,7 @@
             <aside class="side-panel">
                 <div class="metric-row">
                     <div class="metric-card">
-                        <div class="metric-label">Total backpacks</div>
+                        <div class="metric-label">Total bottles</div>
                         <div class="metric-value" id="totalBackpacks">0</div>
                         <div class="metric-tagline">All detections since page load</div>
                     </div>
@@ -873,7 +873,7 @@
 
                 <section class="event-panel">
                     <div class="event-header">
-                        <div class="event-title">Backpack Events</div>
+                        <div class="event-title">Bottle Events</div>
                         <div class="event-pill">
                             Tracking last <span id="eventWindow">10</span> events
                         </div>
@@ -882,7 +882,7 @@
                         <div class="event-item">
                             <div class="event-main">
                                 <div class="event-title-text">Waiting for detections…</div>
-                                <div class="event-meta">Frames will appear here as backpacks are detected.</div>
+                                <div class="event-meta">Frames will appear here as bottles are detected.</div>
                             </div>
                             <div class="event-badge">Idle</div>
                         </div>
@@ -929,7 +929,7 @@
         let frameCount = 0;
         let lastFrameTime = Date.now();
         let currentFPS = 0;
-        let totalBackpacks = 0;
+        let totalBackpacks = 0; // now counting bottles, keep variable for simplicity
         let peakPerFrame = 0;
         const maxEvents = 10;
         const events = [];
@@ -968,7 +968,7 @@
             }
         });
 
-        // Handle incoming video feed with detections (backpacks only)
+        // Handle incoming video feed with detections (bottles only)
         socket.on('browser_feed', (data) => {
             console.log('Received frame from Pi:', data.pi_id);
             
@@ -999,7 +999,7 @@
             const detectionCount = data.detections ? data.detections.length : 0;
             document.getElementById('detectionCount').textContent = detectionCount;
 
-            // Update aggregates if we saw any backpacks
+            // Update aggregates if we saw any bottles
             if (detectionCount > 0) {
                 totalBackpacks += detectionCount;
                 peakPerFrame = Math.max(peakPerFrame, detectionCount);
@@ -1066,7 +1066,7 @@
         ctx.fillStyle = '#9ca3af';
         ctx.font = '18px Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('Waiting for backpack video feed…', canvas.width / 2, canvas.height / 2);
+        ctx.fillText('Waiting for water bottle video feed…', canvas.width / 2, canvas.height / 2);
 
         function appendEvent(event) {
             events.unshift(event);
@@ -1086,7 +1086,7 @@
 
                 const title = document.createElement('div');
                 title.className = 'event-title-text';
-                title.textContent = `${e.count} backpack${e.count > 1 ? 's' : ''} detected`;
+                title.textContent = `${e.count} bottle${e.count > 1 ? 's' : ''} detected`;
 
                 const meta = document.createElement('div');
                 meta.className = 'event-meta';
