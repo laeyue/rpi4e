@@ -5,8 +5,8 @@ After=network.target
 [Service]
 Type=simple
 User=laeyue
-WorkingDirectory=/home/laeyue/rpimode/client
-ExecStart=/home/laeyue/rpimode/client/venv/bin/python bridge.py
+WorkingDirectory=/home/laeyue/rpi4e/client
+ExecStart=/home/laeyue/rpi4e/client/venv/bin/python bridge.py
 Restart=always
 RestartSec=10
 
