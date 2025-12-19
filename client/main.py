@@ -1,12 +1,12 @@
-import cv2
-import socketio
 import base64
-import time
-import json
 import os
-import urllib.request
+import time
 from datetime import datetime
+
+import cv2
 import numpy as np
+import socketio
+from ultralytics import YOLO
 
 # Configuration
 SERVER_URL = "https://edge.studentio.xyz"  # Change to your server IP/domain
@@ -15,15 +15,13 @@ CAMERA_INDEX = 0  # USB Camera index (usually 0 for first camera)
 FRAME_WIDTH = 320
 FRAME_HEIGHT = 240
 FPS_TARGET = 15  # Target frames per second to send
-JPEG_QUALITY = 60 # Lower quality for faster streaming
+JPEG_QUALITY = 60  # Lower quality for faster streaming
 
-# Model Configuration (OpenCV DNN - MobileNet SSD)
+# Backpack Detection Configuration (YOLOv8)
 MODEL_DIR = "models"
-PROTO_URL = "https://raw.githubusercontent.com/djmv/MobilNet_SSD_opencv/master/MobileNetSSD_deploy.prototxt"
-MODEL_URL = "https://github.com/djmv/MobilNet_SSD_opencv/raw/master/MobileNetSSD_deploy.caffemodel"
-PROTO_FILENAME = "MobileNetSSD_deploy.prototxt"
-MODEL_FILENAME = "MobileNetSSD_deploy.caffemodel"
+YOLO_WEIGHTS = os.path.join(MODEL_DIR, "yolov8n.pt")
 CONFIDENCE_THRESHOLD = 0.5
+TARGET_CLASS_NAME = "backpack"
 
 # Initialize SocketIO client
 sio = socketio.Client()
@@ -33,93 +31,116 @@ sio = socketio.Client()
 # so we don't strictly need internal start/stop logic, but we keep it for direct usage.
 is_running = True
 
+
 @sio.event
 def command_received(data):
     """Handle control commands from server"""
     global is_running
-    command = data.get('command')
-    # Only handle commands if running standalone. 
+    command = data.get("command")
+    # Only handle commands if running standalone.
     # If running via bridge, the bridge handles the process lifecycle.
     print(f"📥 Received command: {command}")
-    
-    if command == 'start':
+
+    if command == "start":
         is_running = True
-    elif command == 'stop':
+    elif command == "stop":
         is_running = False
 
-def download_model():
-    """Download the Caffe model if not present"""
+
+def ensure_model_dir():
+    """Make sure the model directory exists."""
     if not os.path.exists(MODEL_DIR):
-        os.makedirs(MODEL_DIR)
-
-    proto_path = os.path.join(MODEL_DIR, PROTO_FILENAME)
-    model_path = os.path.join(MODEL_DIR, MODEL_FILENAME)
-
-    if not os.path.exists(proto_path):
-        print("📥 Downloading model architecture...")
-        urllib.request.urlretrieve(PROTO_URL, proto_path)
-
-    if not os.path.exists(model_path):
-        print("📥 Downloading model weights...")
-        urllib.request.urlretrieve(MODEL_URL, model_path)
-        print("✅ Model downloaded successfully")
-    else:
-        print("✅ Model already exists")
+        os.makedirs(MODEL_DIR, exist_ok=True)
 
 
 def load_model():
-    """Load OpenCV DNN model"""
-    download_model()
+    """
+    Load YOLOv8 model for backpack detection.
+
+    The ultralytics package will automatically download `yolov8n.pt`
+    the first time it is used if it is not already present.
+    """
+    ensure_model_dir()
     try:
-        proto_path = os.path.join(MODEL_DIR, PROTO_FILENAME)
-        model_path = os.path.join(MODEL_DIR, MODEL_FILENAME)
-        net = cv2.dnn.readNetFromCaffe(proto_path, model_path)
-        print("🧠 OpenCV DNN model loaded successfully")
-        return net
+        print("🧠 Loading YOLOv8 model for backpack detection...")
+        # If YOLO_WEIGHTS exists, load from local path, otherwise let ultralytics handle it
+        if os.path.exists(YOLO_WEIGHTS):
+            model = YOLO(YOLO_WEIGHTS)
+        else:
+            # This will download `yolov8n.pt` into the ultralytics cache
+            model = YOLO("yolov8n.pt")
+        print("✅ YOLOv8 model loaded successfully")
+        return model
     except Exception as e:
-        print(f"❌ Failed to load model: {e}")
+        print(f"❌ Failed to load YOLO model: {e}")
         return None
 
 
-def inference(net, frame):
+def inference(model, frame):
     """
-    Run OpenCV DNN inference on the frame and detect humans
+    Run YOLOv8 inference on the frame and detect backpacks.
+
+    Returns a list of detections in the same structure the server/web UI expects:
+    [
+        {'label': 'backpack', 'x': int, 'y': int, 'width': int, 'height': int, 'confidence': float},
+        ...
+    ]
     """
-    if net is None:
+    if model is None:
         return []
-    
+
     h, w = frame.shape[:2]
-    # MobileNet SSD expects 300x300 input
-    blob = cv2.dnn.blobFromImage(frame, 0.007843, (300, 300), 127.5)
-    net.setInput(blob)
-    detections = net.forward()
-    
-    results = []
-    # Loop over detections
-    for i in range(detections.shape[2]):
-        confidence = detections[0, 0, i, 2]
-        if confidence > CONFIDENCE_THRESHOLD:
-            idx = int(detections[0, 0, i, 1])
-            # Class 15 is Person in MobileNet SSD (Caffe/VOC)
-            if idx == 15: 
-                box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
-                (startX, startY, endX, endY) = box.astype("int")
-                
-                # Ensure coordinates are within frame
-                startX = max(0, startX)
-                startY = max(0, startY)
-                endX = min(w, endX)
-                endY = min(h, endY)
-                
-                results.append({
-                    'label': 'person',
-                    'x': int(startX),
-                    'y': int(startY),
-                    'width': int(endX - startX),
-                    'height': int(endY - startY),
-                    'confidence': float(confidence)
-                })
-    return results
+
+    # YOLO expects RGB images
+    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+    try:
+        results = model.predict(
+            source=rgb_frame,
+            imgsz=max(FRAME_WIDTH, FRAME_HEIGHT),
+            conf=CONFIDENCE_THRESHOLD,
+            verbose=False,
+        )
+    except Exception as e:
+        print(f"❌ YOLO inference failed: {e}")
+        return []
+
+    detections = []
+    if not results:
+        return detections
+
+    result = results[0]
+    names = result.names  # class id -> label
+
+    for box in result.boxes:
+        cls_id = int(box.cls[0])
+        score = float(box.conf[0])
+        label = names.get(cls_id, str(cls_id))
+
+        # Only keep backpacks
+        if label != TARGET_CLASS_NAME:
+            continue
+
+        x1, y1, x2, y2 = box.xyxy[0].tolist()
+
+        # Clamp to image bounds
+        x1 = max(0, min(w - 1, int(x1)))
+        y1 = max(0, min(h - 1, int(y1)))
+        x2 = max(0, min(w - 1, int(x2)))
+        y2 = max(0, min(h - 1, int(y2)))
+
+        detections.append(
+            {
+                "label": TARGET_CLASS_NAME,
+                "x": x1,
+                "y": y1,
+                "width": x2 - x1,
+                "height": y2 - y1,
+                "confidence": score,
+            }
+        )
+
+    return detections
 
 
 def compress_frame(frame, quality=85):
@@ -134,8 +155,8 @@ def compress_frame(frame, quality=85):
         base64 encoded JPEG string
     """
     encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), quality]
-    _, buffer = cv2.imencode('.jpg', frame, encode_param)
-    jpg_as_text = base64.b64encode(buffer).decode('utf-8')
+    _, buffer = cv2.imencode(".jpg", frame, encode_param)
+    jpg_as_text = base64.b64encode(buffer).decode("utf-8")
     return jpg_as_text
 
 
@@ -144,7 +165,7 @@ def connect():
     """Handle successful connection to server"""
     print(f"✅ Connected to server: {SERVER_URL}")
     print(f"🆔 Pi ID: {PI_ID}")
-    sio.emit('register_pi', {'pi_id': PI_ID})
+    sio.emit("register_pi", {"pi_id": PI_ID})
 
 
 @sio.event
@@ -160,28 +181,28 @@ def connect_error(data):
 
 
 def main():
-    """Main loop for capturing and streaming video"""
-    print("🚀 Starting Raspberry Pi Client...")
+    """Main loop for capturing and streaming video with backpack detection."""
+    print("🚀 Starting Raspberry Pi Backpack Detection Client...")
     print(f"📹 Attempting to open camera {CAMERA_INDEX}")
-    
+
     # Initialize camera
     cap = cv2.VideoCapture(CAMERA_INDEX)
-    
+
     if not cap.isOpened():
         print("❌ Error: Could not open camera")
         print("💡 Make sure your USB camera is connected")
         return
-    
+
     # Set camera properties
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
-    
-    print(f"✅ Camera opened successfully")
+
+    print("✅ Camera opened successfully")
     print(f"📐 Resolution: {FRAME_WIDTH}x{FRAME_HEIGHT}")
-    
-    # Load Model
-    net = load_model()
-    
+
+    # Load YOLO model
+    model = load_model()
+
     # Connect to server
     print(f"🔌 Connecting to server: {SERVER_URL}")
     while not sio.connected:
@@ -195,15 +216,16 @@ def main():
             except KeyboardInterrupt:
                 cap.release()
                 return
-    
+
     # Frame timing
     frame_interval = 1.0 / FPS_TARGET
     last_frame_time = time.time()
     frame_count = 0
-    
+    last_detections = []
+
     print(f"🎬 Starting video stream at {FPS_TARGET} FPS...")
     print("Press Ctrl+C to stop")
-    
+
     try:
         while True:
             # Check if running
@@ -213,65 +235,79 @@ def main():
 
             # Read frame from camera
             ret, frame = cap.read()
-            
+
             if not ret:
                 print("⚠️ Failed to read frame from camera")
                 time.sleep(0.1)
                 continue
-            
+
             # Control frame rate
             current_time = time.time()
             if current_time - last_frame_time < frame_interval:
                 continue
-            
+
             last_frame_time = current_time
             frame_count += 1
-            
-            # Run object detection (every 3rd frame to reduce CPU load)
-            if frame_count % 3 == 0:
-                detections = inference(net, frame)
+
+            # Run object detection (every 2nd frame to balance load)
+            if frame_count % 2 == 0:
+                detections = inference(model, frame)
                 last_detections = detections
             else:
                 # Use previous detections for smoother video
-                detections = last_detections if 'last_detections' in locals() else []
-            
+                detections = last_detections
+
             # Compress frame to JPEG/Base64
             base64_image = compress_frame(frame, quality=JPEG_QUALITY)
-            
+
             # Prepare data packet
             data = {
-                'image': base64_image,
-                'detections': detections,
-                'timestamp': datetime.now().isoformat(),
-                'pi_id': PI_ID,
-                'frame_number': frame_count
+                "image": base64_image,
+                "detections": detections,
+                "timestamp": datetime.now().isoformat(),
+                "pi_id": PI_ID,
+                "frame_number": frame_count,
             }
-            
+
             # Send to server
             try:
-                sio.emit('pi_update', data)
-                
+                sio.emit("pi_update", data)
+
                 # Print status every 30 frames
                 if frame_count % 30 == 0:
-                    print(f"📤 Sent frame {frame_count} with {len(detections)} detections")
+                    print(
+                        f"📤 Sent frame {frame_count} with {len(detections)} backpack detections"
+                    )
             except Exception as e:
                 print(f"⚠️ Failed to send frame: {e}")
-            
-            # Optional: Display local preview (comment out for headless Pi)
-            # Uncomment the following lines if you want to see the video on the Pi
+
+            # Optional: Local debug preview (commented out for headless Pi)
             # for detection in detections:
-            #     x, y, w, h = detection['x'], detection['y'], detection['width'], detection['height']
+            #     x, y, w, h = (
+            #         detection["x"],
+            #         detection["y"],
+            #         detection["width"],
+            #         detection["height"],
+            #     )
             #     cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-            #     label = f"{detection['label']} {detection['confidence']:.2f}"
-            #     cv2.putText(frame, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-            # 
-            # cv2.imshow('Local Preview', frame)
-            # if cv2.waitKey(1) & 0xFF == ord('q'):
+            #     label = f'{detection["label"]} {detection["confidence"]:.2f}'
+            #     cv2.putText(
+            #         frame,
+            #         label,
+            #         (x, y - 10),
+            #         cv2.FONT_HERSHEY_SIMPLEX,
+            #         0.5,
+            #         (0, 255, 0),
+            #         2,
+            #     )
+            #
+            # cv2.imshow("Local Preview - Backpack Detection", frame)
+            # if cv2.waitKey(1) & 0xFF == ord("q"):
             #     break
-    
+
     except KeyboardInterrupt:
         print("\n🛑 Stopping client...")
-    
+
     finally:
         # Cleanup
         cap.release()

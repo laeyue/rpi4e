@@ -72,7 +72,8 @@ def handle_control_pi(data):
     command = data.get('command')
     if pi_id and command:
         print(f"Sending command {command} to {pi_id}")
-        emit('command_received', {'command': command}, room=pi_id)
+        # Forward the entire data object so arguments (like wifi creds) are included
+        emit('command_received', data, room=pi_id)
 
 @socketio.on('pi_update')
 def handle_pi_update(data):

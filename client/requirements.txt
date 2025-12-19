@@ -1,3 +1,4 @@
 opencv-python-headless
 python-socketio[client]
 numpy
+ultralytics

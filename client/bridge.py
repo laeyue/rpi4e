@@ -69,6 +69,26 @@ def command_received(data):
         stop_main_script()
         time.sleep(2)
         start_main_script()
+    elif command == 'add_wifi':
+        ssid = data.get('ssid')
+        password = data.get('password')
+        if ssid and password:
+            add_wifi_network(ssid, password)
+
+def add_wifi_network(ssid, password):
+    """Add a new Wi-Fi network to wpa_supplicant"""
+    print(f"📶 Adding new Wi-Fi network: {ssid}")
+    try:
+        # Create wpa_supplicant entry
+        # We use wpa_passphrase to generate the config block
+        cmd = f'wpa_passphrase "{ssid}" "{password}" | sudo tee -a /etc/wpa_supplicant/wpa_supplicant.conf > /dev/null'
+        subprocess.run(cmd, shell=True, check=True)
+        
+        # Reconfigure wpa_supplicant to pick up changes
+        subprocess.run('sudo wpa_cli -i wlan0 reconfigure', shell=True, check=True)
+        print(f"✅ Successfully added network: {ssid}")
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Failed to add Wi-Fi network: {e}")
 
 def main():
     print("🌉 Starting Bridge Service...")

@@ -3,19 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Raspberry Pi Detection Hub</title>
+    <title>Backpack Detection Console</title>
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary: #667eea;
-            --secondary: #764ba2;
-            --success: #10b981;
-            --danger: #ef4444;
-            --bg-gradient: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            --card-bg: rgba(255, 255, 255, 0.95);
-            --text-main: #1f2937;
-            --text-muted: #6b7280;
+            --bg: #020617;
+            --bg-elevated: #020617;
+            --bg-panel: #020617;
+            --bg-surface: #0f172a;
+            --primary: #38bdf8;
+            --primary-soft: rgba(56, 189, 248, 0.12);
+            --accent: #6366f1;
+            --accent-soft: rgba(99, 102, 241, 0.16);
+            --success: #22c55e;
+            --danger: #f97373;
+            --border-subtle: rgba(148, 163, 184, 0.35);
+            --border-strong: rgba(148, 163, 184, 0.65);
+            --text-main: #e5e7eb;
+            --text-muted: #9ca3af;
+            --text-soft: #6b7280;
+            --shadow-soft: 0 18px 45px rgba(15, 23, 42, 0.9);
+            --radius-lg: 18px;
         }
 
         * {
@@ -26,106 +35,315 @@
         }
 
         body {
-            font-family: 'Poppins', sans-serif;
-            background: var(--bg-gradient);
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: radial-gradient(circle at top, #0f172a 0, #020617 45%, #020617 100%);
             min-height: 100vh;
-            padding: 15px;
+            padding: 16px;
             color: var(--text-main);
         }
 
-        .container {
+        .app-shell {
             max-width: 1200px;
             margin: 0 auto;
+            border-radius: 24px;
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            background:
+                radial-gradient(circle at top left, rgba(37, 99, 235, 0.16), transparent 55%),
+                radial-gradient(circle at top right, rgba(56, 189, 248, 0.12), transparent 55%),
+                linear-gradient(to bottom right, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.98));
+            box-shadow: var(--shadow-soft);
+            overflow: hidden;
+            backdrop-filter: blur(20px);
         }
 
-        h1 {
-            color: white;
-            text-align: center;
-            margin-bottom: 25px;
-            font-size: 1.8rem;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
-
-        .feed-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-        }
-
-        .feed-card {
-            background: var(--card-bg);
-            border-radius: 16px;
-            padding: 20px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(10px);
-            transition: transform 0.2s ease;
-        }
-
-        .feed-header {
+        .app-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-            gap: 10px;
+            padding: 18px 22px 10px 22px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.35);
         }
 
-        .header-top {
+        .title-block {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .title-row {
             display: flex;
             align-items: center;
             gap: 10px;
         }
 
-        .pi-id {
-            font-weight: 600;
-            color: var(--secondary);
-            font-size: 1.1rem;
-        }
-
-        .status {
-            padding: 4px 12px;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .status.connected { background: #d1fae5; color: #065f46; }
-        .status.disconnected { background: #fee2e2; color: #991b1b; }
-
-        .controls {
+        .logo-pill {
+            width: 32px;
+            height: 32px;
+            border-radius: 999px;
+            background: radial-gradient(circle at 25% 15%, #f9a8d4 0, #f472b6 22%, transparent 65%),
+                        radial-gradient(circle at 75% 25%, #bae6fd 0, #38bdf8 40%, transparent 75%),
+                        linear-gradient(145deg, #4f46e5, #0ea5e9);
+            box-shadow: 0 0 0 1px rgba(30, 64, 175, 0.6), 0 16px 40px rgba(15, 23, 42, 0.8);
             display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .logo-icon {
+            width: 16px;
+            height: 18px;
+            border-radius: 6px 6px 8px 8px;
+            border: 2px solid rgba(248, 250, 252, 0.9);
+            box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.22);
+            position: relative;
+        }
+
+        .logo-icon::before,
+        .logo-icon::after {
+            content: '';
+            position: absolute;
+            width: 5px;
+            height: 6px;
+            border-radius: 999px;
+            border: 2px solid rgba(248, 250, 252, 0.9);
+            top: 9px;
+        }
+
+        .logo-icon::before {
+            left: -4px;
+        }
+
+        .logo-icon::after {
+            right: -4px;
+        }
+
+        .app-title {
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            font-size: 0.98rem;
+            display: flex;
+            align-items: center;
             gap: 8px;
         }
 
-        .btn {
-            padding: 8px 20px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            font-family: inherit;
-            color: white;
-            transition: all 0.2s;
-            font-size: 0.9rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        .pill-badge {
+            padding: 2px 9px;
+            border-radius: 999px;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            background: rgba(15, 23, 42, 0.75);
+            border: 1px solid rgba(148, 163, 184, 0.65);
+            color: var(--text-muted);
         }
 
-        .btn:active { transform: scale(0.95); }
-        .btn-start { background-color: var(--success); }
-        .btn-start:hover { background-color: #059669; }
-        .btn-stop { background-color: var(--danger); }
-        .btn-stop:hover { background-color: #dc2626; }
+        .subtitle {
+            font-size: 0.8rem;
+            color: var(--text-soft);
+        }
 
-        .canvas-container {
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 10px 4px 4px;
+            border-radius: 999px;
+            border: 1px solid rgba(34, 197, 94, 0.5);
+            background: radial-gradient(circle at 0 0, rgba(34, 197, 94, 0.4), transparent 55%),
+                        rgba(21, 128, 61, 0.16);
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+            background: radial-gradient(circle at 30% 30%, #bbf7d0 0, #22c55e 35%, #16a34a 100%);
             position: relative;
-            width: 100%;
-            background: #000;
-            border-radius: 12px;
+        }
+
+        .status-dot::after {
+            content: '';
+            position: absolute;
+            inset: -6px;
+            border-radius: inherit;
+            border: 1px solid rgba(34, 197, 94, 0.45);
+            opacity: 0.7;
+        }
+
+        .status-chip-text {
+            font-size: 0.74rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .status-chip-text span {
+            color: #bbf7d0;
+        }
+
+        .chip-muted {
+            padding: 4px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(148, 163, 184, 0.45);
+            background: rgba(15, 23, 42, 0.85);
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        .chip-muted strong {
+            color: var(--text-main);
+            font-weight: 500;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 3fr 2fr;
+            gap: 12px;
+            padding: 10px 12px 16px 12px;
+        }
+
+        .panel {
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-subtle);
+            background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.99));
             overflow: hidden;
-            aspect-ratio: 4/3;
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 14px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.35);
+            background: linear-gradient(to right, rgba(15, 23, 42, 0.8), rgba(15, 23, 42, 0.92));
+        }
+
+        .panel-title {
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--text-soft);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tiny-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 999px;
+            background: var(--primary);
+            box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.25);
+        }
+
+        .panel-title span {
+            color: var(--text-main);
+        }
+
+        .pi-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.76rem;
+            color: var(--text-muted);
+        }
+
+        .pi-pill {
+            padding: 4px 9px;
+            border-radius: 999px;
+            border: 1px solid rgba(148, 163, 184, 0.7);
+            background: rgba(15, 23, 42, 0.85);
+            font-size: 0.75rem;
+            color: var(--text-main);
+        }
+
+        .status-badge {
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .status-badge.connected {
+            border: 1px solid rgba(34, 197, 94, 0.6);
+            background: rgba(22, 163, 74, 0.16);
+            color: #bbf7d0;
+        }
+
+        .status-badge.disconnected {
+            border: 1px solid rgba(248, 113, 113, 0.7);
+            background: rgba(127, 29, 29, 0.2);
+            color: #fecaca;
+        }
+
+        .panel-body {
+            padding: 12px;
+        }
+
+        .canvas-shell {
+            border-radius: 16px;
+            border: 1px solid rgba(15, 23, 42, 0.9);
+            background: radial-gradient(circle at top, rgba(15, 23, 42, 0.9), #020617);
+            padding: 6px;
+            box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.85);
+        }
+
+        .canvas-inner {
+            border-radius: 12px;
+            background: #020617;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .video-meta-strip {
+            position: absolute;
+            inset: 10px 10px auto 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.7rem;
+            color: var(--text-soft);
+            pointer-events: none;
+            mix-blend-mode: screen;
+            text-shadow: 0 1px 0 rgba(15, 23, 42, 0.9);
+        }
+
+        .video-badge {
+            padding: 4px 8px;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(148, 163, 184, 0.6);
+        }
+
+        .video-badge strong {
+            color: var(--text-main);
+            font-weight: 500;
+        }
+
+        .video-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 8px;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(248, 113, 113, 0.85);
+            color: #fecaca;
+        }
+
+        .video-indicator-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 999px;
+            background: radial-gradient(circle at 30% 30%, #fecaca 0, #ef4444 38%, #b91c1c 100%);
         }
 
         #videoCanvas {
@@ -135,95 +353,570 @@
             display: block;
         }
 
-        .stats {
+        .stat-grid {
+            margin-top: 12px;
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin-top: 20px;
-            padding: 15px;
-            background: #f8fafc;
-            border-radius: 12px;
-            border: 1px solid #e2e8f0;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
         }
 
-        .stat-item {
+        .stat-card {
+            border-radius: 12px;
+            border: 1px solid rgba(148, 163, 184, 0.55);
+            background: radial-gradient(circle at top left, rgba(56, 189, 248, 0.1), rgba(15, 23, 42, 0.96));
+            padding: 8px 9px;
             display: flex;
             flex-direction: column;
-            align-items: center;
+            gap: 3px;
+        }
+
+        .stat-card:nth-child(2) {
+            background: radial-gradient(circle at top left, rgba(129, 140, 248, 0.1), rgba(15, 23, 42, 0.96));
+        }
+
+        .stat-card:nth-child(3) {
+            background: radial-gradient(circle at top left, rgba(34, 197, 94, 0.1), rgba(15, 23, 42, 0.96));
         }
 
         .stat-label {
-            font-size: 0.75rem;
-            color: var(--text-muted);
+            font-size: 0.7rem;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 4px;
+            letter-spacing: 0.09em;
+            color: var(--text-soft);
         }
 
         .stat-value {
-            font-size: 1.25rem;
+            font-size: 1.05rem;
             font-weight: 600;
-            color: var(--text-main);
         }
 
-        .timestamp {
-            font-size: 0.75rem;
+        .stat-caption {
+            font-size: 0.68rem;
             color: var(--text-muted);
-            text-align: center;
-            margin-top: 15px;
         }
 
-        /* Mobile Optimizations */
+        .timestamp-row {
+            margin-top: 10px;
+            font-size: 0.7rem;
+            color: var(--text-soft);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .timestamp-pill {
+            padding: 3px 9px;
+            border-radius: 999px;
+            border: 1px dashed rgba(148, 163, 184, 0.6);
+        }
+
+        .controls-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .btn {
+            position: relative;
+            overflow: hidden;
+            padding: 7px 14px;
+            border-radius: 999px;
+            border: 1px solid transparent;
+            font-size: 0.78rem;
+            font-weight: 500;
+            font-family: inherit;
+            cursor: pointer;
+            transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.15s ease, background 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        .btn span {
+            position: relative;
+            z-index: 1;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+            background: radial-gradient(circle at 0 0, rgba(248, 250, 252, 0.12), transparent 60%);
+        }
+
+        .btn:hover::before {
+            opacity: 1;
+        }
+
+        .btn:active {
+            transform: scale(0.97);
+        }
+
+        .btn-primary {
+            background: linear-gradient(to right, #22c55e, #4ade80);
+            color: #022c22;
+            border-color: rgba(22, 163, 74, 0.85);
+            box-shadow: 0 8px 22px rgba(22, 163, 74, 0.45);
+        }
+
+        .btn-danger {
+            background: linear-gradient(to right, #ef4444, #fb7185);
+            color: #111827;
+            border-color: rgba(248, 113, 113, 0.9);
+            box-shadow: 0 8px 22px rgba(185, 28, 28, 0.55);
+        }
+
+        .btn-outline {
+            background: rgba(15, 23, 42, 0.88);
+            color: var(--text-main);
+            border-color: rgba(148, 163, 184, 0.75);
+        }
+
+        .btn-icon {
+            width: 12px;
+            height: 12px;
+            border-radius: 999px;
+            border: 2px solid currentColor;
+        }
+
+        .btn-icon.play {
+            border-radius: 999px;
+            position: relative;
+        }
+
+        .btn-icon.play::before {
+            content: '';
+            position: absolute;
+            inset: 1px 0 1px 3px;
+            border-left: 3px solid currentColor;
+            border-top: 3px solid transparent;
+            border-bottom: 3px solid transparent;
+        }
+
+        .btn-icon.stop {
+            border-radius: 3px;
+            background: currentColor;
+        }
+
+        .side-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .metric-row {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .metric-card {
+            border-radius: 14px;
+            border: 1px solid rgba(148, 163, 184, 0.45);
+            background: radial-gradient(circle at top, rgba(15, 23, 42, 0.95), #020617);
+            padding: 8px 9px;
+        }
+
+        .metric-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-soft);
+            margin-bottom: 2px;
+        }
+
+        .metric-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .metric-tagline {
+            font-size: 0.68rem;
+            color: var(--text-muted);
+        }
+
+        .event-panel {
+            border-radius: var(--radius-lg);
+            border: 1px solid rgba(148, 163, 184, 0.5);
+            background: radial-gradient(circle at top left, rgba(37, 99, 235, 0.16), rgba(15, 23, 42, 0.97));
+            padding: 10px 11px;
+        }
+
+        .event-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .event-title {
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--text-soft);
+        }
+
+        .event-pill {
+            padding: 3px 8px;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(148, 163, 184, 0.6);
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        .event-list {
+            max-height: 190px;
+            overflow-y: auto;
+            padding-right: 3px;
+        }
+
+        .event-item {
+            border-radius: 10px;
+            border: 1px solid rgba(148, 163, 184, 0.4);
+            background: rgba(15, 23, 42, 0.85);
+            padding: 7px 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.74rem;
+        }
+
+        .event-item + .event-item {
+            margin-top: 5px;
+        }
+
+        .event-main {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+        }
+
+        .event-title-text {
+            font-weight: 500;
+        }
+
+        .event-meta {
+            color: var(--text-soft);
+        }
+
+        .event-badge {
+            padding: 3px 7px;
+            border-radius: 999px;
+            background: rgba(34, 197, 94, 0.13);
+            color: #bbf7d0;
+            border: 1px solid rgba(34, 197, 94, 0.65);
+        }
+
+        .wifi-panel {
+            border-radius: var(--radius-lg);
+            border: 1px dashed rgba(148, 163, 184, 0.6);
+            background: rgba(15, 23, 42, 0.9);
+            padding: 8px 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.76rem;
+            color: var(--text-soft);
+        }
+
+        .wifi-panel strong {
+            color: var(--text-main);
+            font-weight: 500;
+        }
+
+        .wifi-panel button {
+            font-size: 0.75rem;
+        }
+
+        .wifi-modal-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(16px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .wifi-modal {
+            width: 92%;
+            max-width: 420px;
+            border-radius: 20px;
+            background: radial-gradient(circle at top, rgba(56, 189, 248, 0.14), rgba(15, 23, 42, 0.98));
+            border: 1px solid rgba(148, 163, 184, 0.7);
+            padding: 18px 18px 14px 18px;
+            box-shadow: 0 22px 55px rgba(15, 23, 42, 0.95);
+        }
+
+        .wifi-modal h3 {
+            font-size: 0.98rem;
+            margin-bottom: 8px;
+        }
+
+        .wifi-modal p {
+            font-size: 0.76rem;
+            color: var(--text-soft);
+            margin-bottom: 10px;
+        }
+
+        .field-group {
+            margin-bottom: 10px;
+        }
+
+        .field-label {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 0.74rem;
+            color: var(--text-soft);
+        }
+
+        .field-input {
+            width: 100%;
+            padding: 7px 9px;
+            border-radius: 10px;
+            border: 1px solid rgba(148, 163, 184, 0.7);
+            background: rgba(15, 23, 42, 0.9);
+            color: var(--text-main);
+            font-size: 0.8rem;
+        }
+
+        .field-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.7);
+        }
+
+        .wifi-modal-footer {
+            margin-top: 10px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .btn-secondary {
+            padding-inline: 10px;
+            background: rgba(15, 23, 42, 0.86);
+            color: var(--text-main);
+            border-color: rgba(148, 163, 184, 0.75);
+        }
+
+        .btn-cta {
+            padding-inline: 12px;
+            background: linear-gradient(to right, #38bdf8, #6366f1);
+            color: #eff6ff;
+            border-color: rgba(56, 189, 248, 0.9);
+            box-shadow: 0 10px 26px rgba(56, 189, 248, 0.55);
+        }
+
+        @media (max-width: 900px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
         @media (max-width: 640px) {
-            body { padding: 10px; }
-            h1 { font-size: 1.5rem; margin-bottom: 20px; }
-            .feed-card { padding: 15px; }
-            .feed-header { flex-direction: column; align-items: stretch; text-align: center; }
-            .header-top { justify-content: center; margin-bottom: 10px; }
-            .controls { justify-content: center; }
-            .btn { flex: 1; padding: 12px; }
-            .stats { gap: 5px; padding: 10px; }
-            .stat-value { font-size: 1rem; }
+            body {
+                padding: 10px;
+            }
+
+            .app-shell {
+                border-radius: 18px;
+            }
+
+            .app-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+
+            .header-right {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .layout {
+                padding-inline: 10px;
+            }
+
+            .panel-body {
+                padding: 10px;
+            }
+
+            .stat-grid,
+            .metric-row {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🎯 Raspberry Pi Object Detection Hub</h1>
-        
-        <div class="feed-grid">
-            <div class="feed-card">
-                <div class="feed-header">
-                    <div class="header-top">
-                        <div class="pi-id" id="piId">Waiting for feed...</div>
-                        <div class="status disconnected" id="status">Disconnected</div>
+    <div class="app-shell">
+        <header class="app-header">
+            <div class="title-block">
+                <div class="title-row">
+                    <div class="logo-pill">
+                        <div class="logo-icon"></div>
                     </div>
-                    <div class="controls">
-                        <button class="btn btn-start" onclick="controlPi('start')">Start Stream</button>
-                        <button class="btn btn-stop" onclick="controlPi('stop')">Stop Stream</button>
+                    <div class="app-title">
+                        Backpack Detection Console
+                        <span class="pill-badge">Raspberry Pi Edge</span>
                     </div>
                 </div>
-                
-                <div class="canvas-container">
-                    <canvas id="videoCanvas" width="640" height="480"></canvas>
+                <div class="subtitle">
+                    Live backpack detection from Pi cameras with low-latency streaming.
                 </div>
-                
-                <div class="stats">
-                    <div class="stat-item">
-                        <div class="stat-label">Detections</div>
-                        <div class="stat-value" id="detectionCount">0</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-label">FPS</div>
-                        <div class="stat-value" id="fps">0</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-label">Latency</div>
-                        <div class="stat-value" id="latency">0ms</div>
+            </div>
+            <div class="header-right">
+                <div class="chip-muted">
+                    Stream target <strong>15 FPS</strong> · Model <strong>YOLOv8n</strong>
+                </div>
+                <div class="status-chip">
+                    <div class="status-dot"></div>
+                    <div class="status-chip-text">
+                        STATUS · <span id="status">Disconnected</span>
                     </div>
                 </div>
-                
-                <div class="timestamp" id="timestamp">No data received</div>
+            </div>
+        </header>
+
+        <main class="layout">
+            <section class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <div class="tiny-dot"></div>
+                        <span>Live Video</span>
+                    </div>
+                    <div class="pi-meta">
+                        <div class="pi-pill" id="piId">Waiting for Pi...</div>
+                        <span class="status-badge disconnected" id="bridgeStatus">
+                            Bridge Offline
+                        </span>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <div class="canvas-shell">
+                        <div class="canvas-inner">
+                            <div class="video-meta-strip">
+                                <div class="video-badge">
+                                    <strong id="frameMeta">No frames received</strong>
+                                </div>
+                                <div class="video-indicator">
+                                    <div class="video-indicator-dot"></div>
+                                    <span>Backpack detector</span>
+                                </div>
+                            </div>
+                            <canvas id="videoCanvas" width="640" height="480"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="stat-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">Backpacks in Frame</div>
+                            <div class="stat-value" id="detectionCount">0</div>
+                            <div class="stat-caption">Current frame only</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Stream FPS</div>
+                            <div class="stat-value" id="fps">0</div>
+                            <div class="stat-caption">Measured in browser</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">End-to-End Latency</div>
+                            <div class="stat-value" id="latency">0 ms</div>
+                            <div class="stat-caption">Camera → Server → You</div>
+                        </div>
+                    </div>
+
+                    <div class="timestamp-row">
+                        <div class="timestamp-pill" id="timestamp">
+                            No frames received yet
+                        </div>
+                        <div class="controls-row">
+                            <button class="btn btn-primary" onclick="controlPi('start')">
+                                <span class="btn-icon play"></span>
+                                <span>Start Stream</span>
+                            </button>
+                            <button class="btn btn-danger" onclick="controlPi('stop')">
+                                <span class="btn-icon stop"></span>
+                                <span>Stop Stream</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <aside class="side-panel">
+                <div class="metric-row">
+                    <div class="metric-card">
+                        <div class="metric-label">Total backpacks</div>
+                        <div class="metric-value" id="totalBackpacks">0</div>
+                        <div class="metric-tagline">All detections since page load</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Peak per frame</div>
+                        <div class="metric-value" id="peakPerFrame">0</div>
+                        <div class="metric-tagline">Highest simultaneous count</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Last detection</div>
+                        <div class="metric-value" id="lastDetection">–</div>
+                        <div class="metric-tagline">Local time</div>
+                    </div>
+                </div>
+
+                <section class="event-panel">
+                    <div class="event-header">
+                        <div class="event-title">Backpack Events</div>
+                        <div class="event-pill">
+                            Tracking last <span id="eventWindow">10</span> events
+                        </div>
+                    </div>
+                    <div class="event-list" id="eventList">
+                        <div class="event-item">
+                            <div class="event-main">
+                                <div class="event-title-text">Waiting for detections…</div>
+                                <div class="event-meta">Frames will appear here as backpacks are detected.</div>
+                            </div>
+                            <div class="event-badge">Idle</div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="wifi-panel">
+                    <div>
+                        <div><strong>Configure Pi Wi‑Fi</strong></div>
+                        <div>Add new networks without SSH or a monitor.</div>
+                    </div>
+                    <button class="btn btn-outline" onclick="showWifiModal()">
+                        <span>+ Add Wi‑Fi</span>
+                    </button>
+                </section>
+            </aside>
+        </main>
+    </div>
+
+    <div id="wifiModal" class="wifi-modal-backdrop">
+        <div class="wifi-modal">
+            <h3>Add Wi‑Fi network to this Pi</h3>
+            <p>Credentials are sent securely over the existing Socket.IO connection.</p>
+            <div class="field-group">
+                <label class="field-label">SSID (Network name)</label>
+                <input type="text" id="wifiSSID" class="field-input" placeholder="Office‑Backbone‑5G">
+            </div>
+            <div class="field-group">
+                <label class="field-label">Password</label>
+                <input type="password" id="wifiPass" class="field-input" placeholder="••••••••••">
+            </div>
+            <div class="wifi-modal-footer">
+                <button class="btn btn-secondary" onclick="closeWifiModal()">Cancel</button>
+                <button class="btn btn-cta" onclick="addWifi()">Save Network</button>
             </div>
         </div>
     </div>
@@ -232,44 +925,58 @@
         const socket = io();
         const canvas = document.getElementById('videoCanvas');
         const ctx = canvas.getContext('2d');
-        
+
         let frameCount = 0;
         let lastFrameTime = Date.now();
         let currentFPS = 0;
+        let totalBackpacks = 0;
+        let peakPerFrame = 0;
+        const maxEvents = 10;
+        const events = [];
 
         // Connection status
         socket.on('connect', () => {
             console.log('Connected to server');
             document.getElementById('status').textContent = 'Connected';
-            document.getElementById('status').className = 'status connected';
+            const bridgeStatus = document.getElementById('bridgeStatus');
+            bridgeStatus.textContent = 'Bridge Unknown';
+            bridgeStatus.className = 'status-badge connected';
         });
 
         socket.on('disconnect', () => {
             console.log('Disconnected from server');
             document.getElementById('status').textContent = 'Disconnected';
-            document.getElementById('status').className = 'status disconnected';
+            const bridgeStatus = document.getElementById('bridgeStatus');
+            bridgeStatus.textContent = 'Bridge Offline';
+            bridgeStatus.className = 'status-badge disconnected';
         });
 
         // Handle Pi status updates (Bridge connected)
         socket.on('pi_status', (data) => {
+            const piIdEl = document.getElementById('piId');
+            const bridgeStatus = document.getElementById('bridgeStatus');
+
             if (data.status === 'online') {
                 console.log('Pi Bridge connected:', data.pi_id);
-                document.getElementById('piId').textContent = data.pi_id;
-                document.getElementById('status').textContent = 'Bridge Ready';
-                document.getElementById('status').className = 'status connected';
+                piIdEl.textContent = data.pi_id;
+                bridgeStatus.textContent = 'Bridge Ready';
+                bridgeStatus.className = 'status-badge connected';
             } else if (data.status === 'offline') {
                 console.log('Pi Bridge disconnected:', data.pi_id);
-                document.getElementById('status').textContent = 'Bridge Offline';
-                document.getElementById('status').className = 'status disconnected';
+                bridgeStatus.textContent = 'Bridge Offline';
+                bridgeStatus.className = 'status-badge disconnected';
             }
         });
 
-        // Handle incoming video feed with detections
+        // Handle incoming video feed with detections (backpacks only)
         socket.on('browser_feed', (data) => {
             console.log('Received frame from Pi:', data.pi_id);
             
             // Update Pi ID
             document.getElementById('piId').textContent = data.pi_id || 'Unknown Pi';
+
+            // Update frame meta
+            document.getElementById('frameMeta').textContent = `Frame #${data.frame_number || 0}`;
             
             // Calculate FPS
             frameCount++;
@@ -285,15 +992,32 @@
             if (data.timestamp) {
                 const sentTime = new Date(data.timestamp).getTime();
                 const latency = now - sentTime;
-                document.getElementById('latency').textContent = `${latency}ms`;
+                document.getElementById('latency').textContent = `${latency} ms`;
             }
             
             // Update detection count
             const detectionCount = data.detections ? data.detections.length : 0;
             document.getElementById('detectionCount').textContent = detectionCount;
+
+            // Update aggregates if we saw any backpacks
+            if (detectionCount > 0) {
+                totalBackpacks += detectionCount;
+                peakPerFrame = Math.max(peakPerFrame, detectionCount);
+                document.getElementById('totalBackpacks').textContent = totalBackpacks;
+                document.getElementById('peakPerFrame').textContent = peakPerFrame;
+
+                const nowLocal = new Date();
+                document.getElementById('lastDetection').textContent = nowLocal.toLocaleTimeString();
+
+                appendEvent({
+                    timestamp: nowLocal,
+                    count: detectionCount,
+                    piId: data.pi_id || 'Unknown Pi'
+                });
+            }
             
             // Update timestamp
-            document.getElementById('timestamp').textContent = `Last update: ${new Date().toLocaleTimeString()}`;
+            document.getElementById('timestamp').textContent = `Last update · ${new Date().toLocaleTimeString()}`;
             
             // Draw image
             const img = new Image();
@@ -317,32 +1041,70 @@
 
         function drawBoundingBox(detection) {
             const { label, x, y, width, height, confidence } = detection;
-            
+
             // Draw rectangle
-            ctx.strokeStyle = '#00ff00';
+            ctx.strokeStyle = '#38bdf8';
             ctx.lineWidth = 3;
             ctx.strokeRect(x, y, width, height);
-            
+
             // Draw label background
             const labelText = `${label} ${(confidence * 100).toFixed(1)}%`;
-            ctx.font = 'bold 16px Arial';
+            ctx.font = 'bold 14px Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
             const textWidth = ctx.measureText(labelText).width;
-            
-            ctx.fillStyle = '#00ff00';
-            ctx.fillRect(x, y - 25, textWidth + 10, 25);
-            
+
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+            ctx.fillRect(x - 1, y - 22, textWidth + 12, 19);
+
             // Draw label text
-            ctx.fillStyle = '#000000';
-            ctx.fillText(labelText, x + 5, y - 7);
+            ctx.fillStyle = '#e5e7eb';
+            ctx.fillText(labelText, x + 4, y - 8);
         }
 
         // Draw initial placeholder
         ctx.fillStyle = '#1f2937';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = '#9ca3af';
-        ctx.font = '24px Arial';
+        ctx.font = '18px Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('Waiting for video feed...', canvas.width / 2, canvas.height / 2);
+        ctx.fillText('Waiting for backpack video feed…', canvas.width / 2, canvas.height / 2);
+
+        function appendEvent(event) {
+            events.unshift(event);
+            if (events.length > maxEvents) {
+                events.pop();
+            }
+
+            const list = document.getElementById('eventList');
+            list.innerHTML = '';
+
+            events.forEach((e) => {
+                const item = document.createElement('div');
+                item.className = 'event-item';
+
+                const main = document.createElement('div');
+                main.className = 'event-main';
+
+                const title = document.createElement('div');
+                title.className = 'event-title-text';
+                title.textContent = `${e.count} backpack${e.count > 1 ? 's' : ''} detected`;
+
+                const meta = document.createElement('div');
+                meta.className = 'event-meta';
+                meta.textContent = `${e.timestamp.toLocaleTimeString()} · ${e.piId}`;
+
+                main.appendChild(title);
+                main.appendChild(meta);
+
+                const badge = document.createElement('div');
+                badge.className = 'event-badge';
+                badge.textContent = 'New';
+
+                item.appendChild(main);
+                item.appendChild(badge);
+
+                list.appendChild(item);
+            });
+        }
 
         // Control function
         function controlPi(command) {
@@ -350,6 +1112,42 @@
             if (piId && piId !== 'Waiting for feed...') {
                 console.log(`Sending ${command} to ${piId}`);
                 socket.emit('control_pi', { pi_id: piId, command: command });
+            } else {
+                alert('No Pi connected yet!');
+            }
+        }
+
+        // Wi-Fi Modal Functions
+        function showWifiModal() {
+            document.getElementById('wifiModal').style.display = 'flex';
+        }
+
+        function closeWifiModal() {
+            document.getElementById('wifiModal').style.display = 'none';
+            document.getElementById('wifiSSID').value = '';
+            document.getElementById('wifiPass').value = '';
+        }
+
+        function addWifi() {
+            const ssid = document.getElementById('wifiSSID').value;
+            const password = document.getElementById('wifiPass').value;
+            const piId = document.getElementById('piId').textContent;
+
+            if (!ssid || !password) {
+                alert('Please enter both SSID and Password');
+                return;
+            }
+
+            if (piId && piId !== 'Waiting for feed...') {
+                console.log(`Adding Wi-Fi ${ssid} to ${piId}`);
+                socket.emit('control_pi', { 
+                    pi_id: piId, 
+                    command: 'add_wifi',
+                    ssid: ssid,
+                    password: password
+                });
+                alert(`Command sent to add "${ssid}" to the Pi. It should connect automatically when in range.`);
+                closeWifiModal();
             } else {
                 alert('No Pi connected yet!');
             }
