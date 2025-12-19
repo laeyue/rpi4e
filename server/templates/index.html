@@ -612,6 +612,16 @@
             border: 1px solid rgba(34, 197, 94, 0.65);
         }
 
+        /* Hide stats and Wi‑Fi configuration UI so only the camera feed and controls remain visible */
+        .stat-grid,
+        .side-panel,
+        .metric-row,
+        .event-panel,
+        .wifi-panel,
+        #wifiModal {
+            display: none !important;
+        }
+
         .wifi-panel {
             border-radius: var(--radius-lg);
             border: 1px dashed rgba(148, 163, 184, 0.6);
